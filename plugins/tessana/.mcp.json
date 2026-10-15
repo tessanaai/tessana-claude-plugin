@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tessana": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/index.mjs"],
+      "env": {
+        "TESSANA_API_KEY": "${TESSANA_API_KEY:-}",
+        "TESSANA_BASE_URL": "${TESSANA_BASE_URL:-https://app.tessanaai.com}"
+      }
+    }
+  }
+}

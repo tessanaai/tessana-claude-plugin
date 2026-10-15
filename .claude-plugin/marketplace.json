@@ -1,0 +1,12 @@
+{
+  "name": "tessana",
+  "owner": { "name": "Tessana AI", "email": "hello@tessanaai.com" },
+  "metadata": { "description": "Tessana AI plugins for Claude Code" },
+  "plugins": [
+    {
+      "name": "tessana",
+      "source": "./plugins/tessana",
+      "description": "Run Tessana test suites and fetch batch and per-test results from Claude Code."
+    }
+  ]
+}

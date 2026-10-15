@@ -26,3 +26,7 @@ node --test                                   # tests against a mock Tessana API
 claude plugin validate . && claude plugin validate plugins/tessana
 claude --plugin-dir ./plugins/tessana         # try local changes without installing
 ```
+
+## License
+
+[Apache-2.0](LICENSE). "Tessana" is a trademark of Tessana AI.

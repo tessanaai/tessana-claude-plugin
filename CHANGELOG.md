@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Skill: `test-info` (a test's definition, run history and generation history).
+- MCP tools: `get_test_details`, `get_test_run_history`, `get_test_gen_history` (backed by the new `/get_test_details`, `/get_test_run_history` and `/get_test_gen_history` API endpoints). Stored login passwords are never returned.
+- `create-test` can base a new test on an existing one.
+
 ## 0.3.0
 
 - Skills: `create-test`, `create-test-suite`.

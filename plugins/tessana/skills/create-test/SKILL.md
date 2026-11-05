@@ -2,13 +2,14 @@
 name: create-test
 description: Create Tessana UI tests from a description, user story, acceptance criteria, or the code being worked on. Use when the user asks to create, write, add or generate a Tessana test or test case, or to cover a flow or feature with a Tessana test.
 argument-hint: <what to test> [--project <project_id>] [--url <start-url>]
-allowed-tools: mcp__plugin_tessana_tessana__list_projects, mcp__plugin_tessana_tessana__list_tests
+allowed-tools: mcp__plugin_tessana_tessana__list_projects, mcp__plugin_tessana_tessana__list_tests, mcp__plugin_tessana_tessana__get_test_details
 ---
 
 Create Tessana tests. Arguments: `$ARGUMENTS`
 
 1. **Project.** Use `--project` if given. Otherwise call `list_projects`: if there is exactly one, use it; if several, show them (id and name) and ask which one, then stop.
 2. **What to test.** Work out the flow(s) from the arguments, the user's request, and any code or spec in context. If it is unclear what the user wants covered, ask one short question and stop. One test should cover one user goal; split a request covering several goals into several tests.
+   If the new test should be based on an existing one ("like the latest test in Clutch", "copy test 2826 but…"), find it with `list_tests` (newest first) and call `get_test_details`. Start from its objective or steps, URL and tags, and apply the requested changes. Do not copy success criteria or login settings silently: these can't be set through the API, so tell the user to add them in the web app if the original had them.
 3. **Draft each test** with:
    - `title`: short and specific, e.g. "Checkout with saved card".
    - Either `objective` or `steps`, never both:

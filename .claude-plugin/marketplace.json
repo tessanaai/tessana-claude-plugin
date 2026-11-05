@@ -6,7 +6,7 @@
     {
       "name": "tessana",
       "source": "./plugins/tessana",
-      "description": "Create Tessana tests and test suites, run them, and fetch batch and per-test results from Claude Code."
+      "description": "Create, inspect and run Tessana tests and test suites, and fetch results and history from Claude Code."
     }
   ]
 }

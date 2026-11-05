@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1
+
+- The API key is now asked for when the plugin is installed (a sensitive `api_key` plugin option kept in Claude Code's secure storage) instead of being read from `TESSANA_API_KEY` in your shell. The OS keychain is still read as a fallback for existing installs.
+- MCP tool: `wait_for_batch` waits inside the MCP server until a batch finishes. `/tessana:run` now uses it from a background subagent instead of running `server/wait-for-batch.mjs` through Bash, which has been removed.
+- `/tessana:setup` now checks the connection and explains how to fix a missing or rejected key.
+- README: "Data and privacy" section; no more shell examples that export the API key.
+- Homepage is now https://tessanaai.com.
+
 ## 0.5.0
 
 - Skill: `edit-test`.

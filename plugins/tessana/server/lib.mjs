@@ -1,4 +1,4 @@
-// Shared by the MCP server and the background batch poller.
+// Helpers for the MCP server: API key lookup and HTTP calls to the Tessana API.
 // Uses node:https because the GET endpoints take a JSON body, which fetch() rejects.
 import https from 'node:https';
 import http from 'node:http';
@@ -25,14 +25,23 @@ function readKeychain() {
   }
 }
 
-// Env var wins; otherwise the OS keychain. Re-checked on each call until found so /tessana:setup works without a restart.
+// TESSANA_API_KEY is set by .mcp.json from the plugin's api_key option (entered when the plugin is installed).
+// An unfilled option can arrive as the literal placeholder, so treat that as unset.
+function keyFromEnv() {
+  const v = (process.env.TESSANA_API_KEY || '').trim();
+  return /^\$\{.*\}$/.test(v) ? '' : v;
+}
+
+// The option wins; the OS keychain is only a fallback for installs that stored the key there before 0.5.1.
+// Re-checked on each call until found, so a key added to the keychain works without a restart.
 export function getApiKey() {
-  if (!cachedKey) cachedKey = process.env.TESSANA_API_KEY || readKeychain();
+  if (!cachedKey) cachedKey = keyFromEnv() || readKeychain();
   return cachedKey;
 }
 
 export const MISSING_KEY_MESSAGE =
-  'No Tessana API key found. Run /tessana:setup, or set TESSANA_API_KEY before starting Claude Code.';
+  'No Tessana API key found. Add your API key in the Tessana plugin settings (run /plugin, select tessana, ' +
+  'and set the API key), then restart Claude Code. Run /tessana:setup for help.';
 
 export function callApi(method, path, body) {
   const url = new URL(BASE_URL + path);
@@ -62,4 +71,35 @@ export function callApi(method, path, body) {
     req.on('error', reject);
     req.end(payload);
   });
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Tests shorten this; users don't need to change it.
+const POLL_INTERVAL_MS = Number.parseInt(process.env.TESSANA_POLL_INTERVAL_MS || '', 10) || 15_000;
+
+// Polls /get_batch_run_results until every run has a final status or timeoutSeconds pass.
+// Returns { done, status, body } with the last response. onPoll is called after each poll (for progress updates).
+export async function waitForBatch(runBatchId, timeoutSeconds, onPoll = () => {}) {
+  const deadline = Date.now() + timeoutSeconds * 1000;
+  for (let poll = 1; ; poll++) {
+    let res;
+    try {
+      res = await callApi('GET', '/get_batch_run_results', { run_batch_id: runBatchId });
+    } catch (e) {
+      res = { status: 0, body: e.message };
+    }
+    if (res.status === 401 || res.status === 404) return { done: false, ...res };
+    if (res.status === 200) {
+      let results = [];
+      try {
+        results = JSON.parse(res.body).results || [];
+      } catch {}
+      if (results.length && results.every((r) => r.status != null)) return { done: true, ...res };
+    }
+    onPoll(poll);
+    const left = deadline - Date.now();
+    if (left <= 0) return { done: false, ...res };
+    await sleep(Math.min(POLL_INTERVAL_MS, left));
+  }
 }

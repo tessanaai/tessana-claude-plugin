@@ -1,11 +1,14 @@
-// Runs the MCP server and batch poller against a mock Tessana API. Usage: node --test
+// Runs the MCP server against a mock Tessana API. Usage: node --test
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const SERVER_DIR = fileURLToPath(new URL('../plugins/tessana/server/', import.meta.url));
+const PLUGIN_DIR = fileURLToPath(new URL('../plugins/tessana/', import.meta.url));
+const SERVER_DIR = PLUGIN_DIR + 'server/';
+const readJson = (rel) => JSON.parse(readFileSync(PLUGIN_DIR + rel, 'utf8'));
 const GOOD_KEY = 'good-key';
 
 let api;
@@ -30,7 +33,8 @@ before(async () => {
       }
       if (req.url === '/get_batch_run_results') {
         batchPolls++;
-        const done = batchPolls >= 2;
+        if (body.run_batch_id === 404) return send(404, { error: 'Batch not found' });
+        const done = body.run_batch_id === 99 && batchPolls >= 2;
         return send(200, {
           results: [
             { testrun_id: 1, run_status: done ? 'Completed' : 'Active', status: done ? 'Success' : null },
@@ -52,7 +56,7 @@ after(() => api.close());
 
 function env(extra) {
   // HOME is pointed away so a developer's real keychain entry can't leak into tests on Linux.
-  return { PATH: process.env.PATH, HOME: '/nonexistent', TESSANA_BASE_URL: baseUrl, ...extra };
+  return { PATH: process.env.PATH, HOME: '/nonexistent', TESSANA_BASE_URL: baseUrl, TESSANA_POLL_INTERVAL_MS: '50', ...extra };
 }
 
 // Sends JSON-RPC requests concurrently and collects responses by id.
@@ -63,24 +67,21 @@ async function mcp(extraEnv, requests) {
   const want = requests.filter((r) => r.id !== undefined).length;
   for (const r of requests) proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', ...r }) + '\n');
   const deadline = Date.now() + 5000;
-  while (out.trim().split('\n').filter(Boolean).length < want && Date.now() < deadline)
+  // Only responses (with an id) count; progress notifications are collected separately.
+  const lines = () => out.trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  while (lines().filter((m) => m.id !== undefined).length < want && Date.now() < deadline)
     await new Promise((r) => setTimeout(r, 20));
   proc.kill();
-  return Object.fromEntries(out.trim().split('\n').filter(Boolean).map((l) => [JSON.parse(l).id, JSON.parse(l)]));
+  const msgs = lines();
+  return {
+    ...Object.fromEntries(msgs.filter((m) => m.id !== undefined).map((m) => [m.id, m])),
+    notifications: msgs.filter((m) => m.id === undefined),
+  };
 }
 
 const call = (id, name, args = {}) => ({ id, method: 'tools/call', params: { name, arguments: args } });
 const text = (msg) => msg.result.content[0].text;
-
-function runPoller(extraEnv, args) {
-  return new Promise((resolve) => {
-    const proc = spawn('node', [SERVER_DIR + 'wait-for-batch.mjs', ...args], { env: env(extraEnv) });
-    let out = '';
-    proc.stdout.on('data', (d) => (out += d));
-    proc.stderr.on('data', (d) => (out += d));
-    proc.on('exit', (code) => resolve({ code, out }));
-  });
-}
+const responses = (r) => Object.values(r).filter((m) => m.id !== undefined);
 
 test('initialize and list tools', async () => {
   const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
@@ -95,6 +96,7 @@ test('initialize and list tools', async () => {
       'check_connection',
       'run_test_suites',
       'get_batch_run_results',
+      'wait_for_batch',
       'get_test_results',
       'list_projects',
       'list_tests',
@@ -135,7 +137,7 @@ test('authoring tools send only the fields given', async () => {
     call(4, 'create_test', { project_id: 3, title: 'Buy', steps: ['Open shop', 'Click Buy'] }),
     call(5, 'create_test_suite', { project_id: 3, name: 'Smoke', test_ids: [5, 4], platform: 'mobile_web' }),
   ]);
-  for (const m of Object.values(r)) assert.equal(m.result.isError, false, text(m));
+  for (const m of responses(r)) assert.equal(m.result.isError, false, text(m));
   assert.match(text(r[1]), /"method":"GET","body":\{\}/);
   assert.match(text(r[2]), /"method":"GET","body":\{"project_id":3\}/);
   assert.match(text(r[3]), /HTTP 201/);
@@ -211,20 +213,56 @@ test('run cap holds under concurrent calls and refunds failed runs', async () =>
     call(3, 'run_test_suites', { ids: [1] }),
     call(4, 'run_test_suites', { ids: [1] }),
   ]);
-  const ok = Object.values(r).filter((m) => !m.result.isError).length;
-  const capped = Object.values(r).filter((m) => /Run limit reached/.test(text(m))).length;
+  const ok = responses(r).filter((m) => !m.result.isError).length;
+  const capped = responses(r).filter((m) => /Run limit reached/.test(text(m))).length;
   assert.ok(ok >= 1 && ok <= 2, `expected 1-2 successful runs, got ${ok}`);
   assert.ok(capped >= 1, 'expected at least one run to hit the cap');
 });
 
-test('poller exits 1 when a run fails', async () => {
+test('wait_for_batch waits until every run has a final status', async () => {
   batchPolls = 0;
-  const { code, out } = await runPoller({ TESSANA_API_KEY: GOOD_KEY }, ['99', '1', '1']);
-  assert.equal(code, 1);
-  assert.match(out, /Batch 99 finished/);
+  const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
+    { id: 1, method: 'tools/call', params: { name: 'wait_for_batch', arguments: { run_batch_id: 99 }, _meta: { progressToken: 't' } } },
+  ]);
+  assert.equal(r[1].result.isError, undefined);
+  assert.match(text(r[1]), /Batch 99 finished/);
+  assert.match(text(r[1]), /"status":"Failed"/);
+  assert.equal(batchPolls, 2);
+  assert.equal(r.notifications[0].method, 'notifications/progress');
 });
 
-test('poller exits 3 on a rejected key', async () => {
-  const { code } = await runPoller({ TESSANA_API_KEY: 'wrong' }, ['99', '1', '1']);
-  assert.equal(code, 3);
+test('wait_for_batch returns still running at the timeout, and errors on a rejected key or unknown batch', async () => {
+  const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
+    call(1, 'wait_for_batch', { run_batch_id: 7, timeout_seconds: 1 }),
+    call(2, 'wait_for_batch', { run_batch_id: 404 }),
+    call(3, 'wait_for_batch', { run_batch_id: 'x' }),
+  ]);
+  assert.match(text(r[1]), /Batch 7 still running after 1s/);
+  assert.equal(r[2].result.isError, true);
+  assert.match(text(r[2]), /HTTP 404/);
+  assert.equal(text(r[3]), 'run_batch_id must be an integer');
+  const bad = await mcp({ TESSANA_API_KEY: 'wrong' }, [call(1, 'wait_for_batch', { run_batch_id: 99 })]);
+  assert.equal(bad[1].result.isError, true);
+  assert.match(text(bad[1]), /HTTP 401/);
+});
+
+test('an unfilled user_config placeholder counts as no key', { skip: process.platform === 'darwin' && 'reads the real macOS keychain' }, async () => {
+  const r = await mcp({ TESSANA_API_KEY: '${user_config.api_key}' }, [call(1, 'check_connection')]);
+  assert.match(text(r[1]), /No Tessana API key found/);
+});
+
+test('API key comes from the sensitive api_key plugin option', () => {
+  const manifest = readJson('.claude-plugin/plugin.json');
+  const opt = manifest.userConfig.api_key;
+  assert.equal(opt.type, 'string');
+  assert.equal(opt.sensitive, true);
+  assert.ok(opt.title && opt.description);
+  const server = readJson('.mcp.json').mcpServers.tessana;
+  assert.equal(server.env.TESSANA_API_KEY, '${user_config.api_key}');
+  assert.ok(server.args.every((a) => a.startsWith('${CLAUDE_PLUGIN_ROOT}/')));
+});
+
+test('MCP server reports the plugin version', async () => {
+  const r = await mcp({}, [{ id: 1, method: 'initialize', params: {} }]);
+  assert.equal(r[1].result.serverInfo.version, readJson('.claude-plugin/plugin.json').version);
 });

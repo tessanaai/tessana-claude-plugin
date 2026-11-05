@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Zero-dependency stdio MCP server wrapping the Tessana public API.
 import readline from 'node:readline';
-import { BASE_URL, MISSING_KEY_MESSAGE, callApi, getApiKey } from './lib.mjs';
+import { BASE_URL, MISSING_KEY_MESSAGE, callApi, getApiKey, waitForBatch } from './lib.mjs';
 
 // One server process per Claude Code session, so this caps batches started per session.
 const MAX_RUNS = Number.parseInt(process.env.TESSANA_MAX_RUNS_PER_SESSION || '', 10) || 10;
@@ -47,6 +47,24 @@ const TOOLS = [
       type: 'object',
       properties: {
         run_batch_id: { type: 'integer', description: 'Batch ID returned by run_test_suites.' },
+      },
+      required: ['run_batch_id'],
+    },
+  },
+  {
+    name: 'wait_for_batch',
+    description:
+      'Wait until every test run in a batch has a final status, checking get_batch_run_results every 15 seconds, ' +
+      'then return the batch results. Gives up after timeout_seconds and returns the latest results with ' +
+      '"still running"; call it again to keep waiting. Starts nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        run_batch_id: { type: 'integer', description: 'Batch ID returned by run_test_suites.' },
+        timeout_seconds: {
+          type: 'integer',
+          description: 'How long to wait before returning (default 300, max 600).',
+        },
       },
       required: ['run_batch_id'],
     },
@@ -313,13 +331,14 @@ function validate(tool, args) {
   return null;
 }
 
-async function callTool(name, args) {
+async function callTool(name, args, progress = () => {}) {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return toolError(`Unknown tool: ${name}`);
   if (!getApiKey()) return toolError(MISSING_KEY_MESSAGE);
   if (name === 'check_connection') return checkConnection();
   const invalid = validate(tool, args);
   if (invalid) return toolError(invalid);
+  if (name === 'wait_for_batch') return waitTool(args, progress);
   if (name === 'run_test_suites' && runsStarted >= MAX_RUNS)
     return toolError(
       `Run limit reached: ${MAX_RUNS} batches already started this session. ` +
@@ -345,6 +364,19 @@ async function callTool(name, args) {
   }
 }
 
+async function waitTool(args, progress) {
+  const timeout = Math.min(Math.max(args.timeout_seconds ?? 300, 1), 600);
+  const res = await waitForBatch(args.run_batch_id, timeout, progress);
+  if (res.done) return { content: [{ type: 'text', text: `Batch ${args.run_batch_id} finished.\nHTTP ${res.status}\n${res.body}` }] };
+  if (res.status === 200)
+    return {
+      content: [
+        { type: 'text', text: `Batch ${args.run_batch_id} still running after ${timeout}s.\nHTTP ${res.status}\n${res.body}` },
+      ],
+    };
+  return toolError(`HTTP ${res.status}\n${res.body}`);
+}
+
 const toolError = (text) => ({ content: [{ type: 'text', text }], isError: true });
 
 const send = (msg) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...msg }) + '\n');
@@ -359,7 +391,7 @@ async function handle(msg) {
         result: {
           protocolVersion: params?.protocolVersion || '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'tessana', version: '0.5.0' },
+          serverInfo: { name: 'tessana', version: '0.5.1' },
         },
       });
     case 'ping':
@@ -369,8 +401,14 @@ async function handle(msg) {
         id,
         result: { tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) },
       });
-    case 'tools/call':
-      return send({ id, result: await callTool(params?.name, params?.arguments || {}) });
+    case 'tools/call': {
+      // Progress notifications keep the client from timing out during wait_for_batch.
+      const token = params?._meta?.progressToken;
+      const progress = (n) =>
+        token !== undefined &&
+        send({ method: 'notifications/progress', params: { progressToken: token, progress: n, message: 'Waiting for batch' } });
+      return send({ id, result: await callTool(params?.name, params?.arguments || {}, progress) });
+    }
     default:
       return send({ id, error: { code: -32601, message: `Method not found: ${method}` } });
   }

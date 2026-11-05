@@ -1,6 +1,6 @@
 ---
 name: edit-test
-description: Edit an existing Tessana test: change its title, objective or steps, start URL, start mode, or tags. Use when the user asks to edit, update, change, fix, rename or retag a Tessana test, or to change where it starts.
+description: Edit an existing Tessana test by changing its title, objective or steps, start URL, start mode, or tags. Use when the user asks to edit, update, change, fix, rename or retag a Tessana test, or to change where it starts.
 argument-hint: <ui_test_id or title> <what to change>
 allowed-tools: mcp__plugin_tessana_tessana__list_projects, mcp__plugin_tessana_tessana__list_tests, mcp__plugin_tessana_tessana__get_test_details
 ---

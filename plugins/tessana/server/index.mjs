@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 // Zero-dependency stdio MCP server wrapping the Tessana public API.
 import readline from 'node:readline';
-import { BASE_URL, MISSING_KEY_MESSAGE, callApi, getApiKey, waitForBatch } from './lib.mjs';
+import {
+  BASE_URL,
+  IS_CLOUD,
+  MISSING_KEY_MESSAGE,
+  REJECTED_KEY_MESSAGE,
+  callApi,
+  getApiKey,
+  waitForBatch,
+} from './lib.mjs';
 
 // One server process per Claude Code session, so this caps batches started per session.
 const MAX_RUNS = Number.parseInt(process.env.TESSANA_MAX_RUNS_PER_SESSION || '', 10) || 10;
@@ -282,7 +290,7 @@ async function checkConnection() {
   try {
     const res = await callApi('POST', '/run_test_suites', {});
     if (res.status === 400) return { content: [{ type: 'text', text: `Connected to ${BASE_URL}; API key is valid.` }] };
-    if (res.status === 401) return toolError(`API key was rejected by ${BASE_URL}.`);
+    if (res.status === 401) return toolError(REJECTED_KEY_MESSAGE);
     return toolError(`Unexpected response from ${BASE_URL}: HTTP ${res.status}\n${res.body}`);
   } catch (e) {
     return toolError(`Could not reach ${BASE_URL}: ${e.message}`);
@@ -357,7 +365,7 @@ async function callTool(name, args, progress = () => {}) {
     const res = await callApi(tool.method, tool.path, body);
     const ok = res.status >= 200 && res.status < 300;
     if (countsAsRun && !ok) runsStarted--;
-    return { content: [{ type: 'text', text: `HTTP ${res.status}\n${res.body}` }], isError: !ok };
+    return { content: [{ type: 'text', text: `HTTP ${res.status}\n${res.body}${cloudHint(res.status)}` }], isError: !ok };
   } catch (e) {
     if (countsAsRun) runsStarted--;
     return toolError(`Request to ${tool.path} failed: ${e.message}`);
@@ -374,8 +382,11 @@ async function waitTool(args, progress) {
         { type: 'text', text: `Batch ${args.run_batch_id} still running after ${timeout}s.\nHTTP ${res.status}\n${res.body}` },
       ],
     };
-  return toolError(`HTTP ${res.status}\n${res.body}`);
+  return toolError(`HTTP ${res.status}\n${res.body}${cloudHint(res.status)}`);
 }
+
+// Local 401 responses are shown as they are; in a cloud session a 401 usually means no key is saved yet.
+const cloudHint = (status) => (IS_CLOUD && status === 401 ? `\n${REJECTED_KEY_MESSAGE}` : '');
 
 const toolError = (text) => ({ content: [{ type: 'text', text }], isError: true });
 
@@ -391,7 +402,7 @@ async function handle(msg) {
         result: {
           protocolVersion: params?.protocolVersion || '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'tessana', version: '0.5.1' },
+          serverInfo: { name: 'tessana', version: '0.6.0' },
         },
       });
     case 'ping':

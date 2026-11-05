@@ -48,11 +48,16 @@ Claude Code asks for your Tessana API key when you install the plugin and keeps 
 
 `TESSANA_BASE_URL` overrides the default server, `https://app.tessanaai.com`.
 
+## Using Tessana in Claude Code cloud sessions
+
+In cloud sessions (claude.ai/code, the mobile app, and cloud mode in the desktop app) there is no `/plugin` menu. Run `/tessana:setup` instead. It opens a secure form where you enter your Tessana API key. The key is not shown to Claude. It is stored as a network secret on that cloud environment, and the environment's proxy adds it to requests sent to app.tessanaai.com. If the environment is shared with your organization, everyone who uses that environment will use the same key.
+
 ## Data and privacy
 
-- **What is sent.** When you use a tool, the plugin sends the request to the Tessana API at `https://app.tessanaai.com`, with your API key in the `Authorization` header. Requests contain what that tool needs: project, test, suite, run and batch IDs, and, when you create or change tests and suites, their titles, objectives, steps, URLs, tags and other settings. No source code is uploaded unless you put it in one of those fields.
+- **What is sent.** When you use a tool, the plugin sends the request to the Tessana API at `https://app.tessanaai.com`, with your API key in the `Authorization` header. In a cloud session the plugin sends a placeholder instead, and the session's proxy replaces it with the key saved for app.tessanaai.com. Requests contain what that tool needs: project, test, suite, run and batch IDs, and, when you create or change tests and suites, their titles, objectives, steps, URLs, tags and other settings. No source code is uploaded unless you put it in one of those fields.
 - **What comes back.** Results can include links to screenshots, audio and video recordings of test runs. These are hosted by Tessana. The plugin passes the links to Claude and does not download them.
 - **Another server.** If you set `TESSANA_BASE_URL`, the plugin sends everything to that Tessana server instead.
+- **Where the key is kept.** On your own computer, in Claude Code's secure storage. In a cloud session, as a network secret on that cloud environment, shared by everyone who uses the environment.
 - **Keychain fallback.** If no API key is set in the plugin settings, the plugin reads one from the macOS Keychain or Linux libsecret (service `tessana`, account `api-key`), if one is stored there. This is for people who set up an earlier version. It only reads that one entry and never writes to the keychain.
 - **In the background.** `/tessana:run` waits for a run to finish by having a background Claude subagent call the `wait_for_batch` tool. The local MCP server then checks the batch status with the Tessana API every 15 seconds, for up to 30 minutes. It does not start a separate script, and the API key stays inside the MCP server.
 - **Nothing else.** The plugin does not send data anywhere other than the Tessana server, collects no analytics, and writes no files. It has no third-party dependencies: the server uses only Node.js built-in modules.

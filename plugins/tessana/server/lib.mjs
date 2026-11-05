@@ -6,6 +6,12 @@ import { execFileSync } from 'node:child_process';
 
 export const BASE_URL = (process.env.TESSANA_BASE_URL || 'https://app.tessanaai.com').replace(/\/+$/, '');
 
+// Claude Code cloud sessions (claude.ai/code, mobile, desktop cloud mode) set CLAUDE_CODE_REMOTE=true.
+// There, the key is saved as a network secret and the session's proxy puts it in the Authorization header,
+// so the server sends a placeholder that the proxy replaces.
+export const IS_CLOUD = process.env.CLAUDE_CODE_REMOTE === 'true';
+export const PROXY_PLACEHOLDER_KEY = 'proxy-injected';
+
 const KEYCHAIN_SERVICE = 'tessana';
 const KEYCHAIN_ACCOUNT = 'api-key';
 
@@ -34,14 +40,21 @@ function keyFromEnv() {
 
 // The option wins; the OS keychain is only a fallback for installs that stored the key there before 0.5.1.
 // Re-checked on each call until found, so a key added to the keychain works without a restart.
+// In a cloud session with no key, returns the proxy placeholder. It is not cached, so a real key still wins.
 export function getApiKey() {
   if (!cachedKey) cachedKey = keyFromEnv() || readKeychain();
-  return cachedKey;
+  return cachedKey || (IS_CLOUD ? PROXY_PLACEHOLDER_KEY : '');
 }
 
-export const MISSING_KEY_MESSAGE =
-  'No Tessana API key found. Add your API key in the Tessana plugin settings (run /plugin, select tessana, ' +
-  'and set the API key), then restart Claude Code. Run /tessana:setup for help.';
+const CLOUD_KEY_MESSAGE = 'No valid Tessana API key for this cloud session. Run /tessana:setup to add one.';
+
+export const MISSING_KEY_MESSAGE = IS_CLOUD
+  ? CLOUD_KEY_MESSAGE
+  : 'No Tessana API key found. Add your API key in the Tessana plugin settings (run /plugin, select tessana, ' +
+    'and set the API key), then restart Claude Code. Run /tessana:setup for help.';
+
+// For an HTTP 401. In a cloud session it most likely means no key is saved for the Tessana host yet.
+export const REJECTED_KEY_MESSAGE = IS_CLOUD ? CLOUD_KEY_MESSAGE : `API key was rejected by ${BASE_URL}.`;
 
 export function callApi(method, path, body) {
   const url = new URL(BASE_URL + path);
@@ -89,6 +102,7 @@ export async function waitForBatch(runBatchId, timeoutSeconds, onPoll = () => {}
     } catch (e) {
       res = { status: 0, body: e.message };
     }
+    // Stop at once: waiting can't fix a rejected key (or a missing proxy credential) or an unknown batch.
     if (res.status === 401 || res.status === 404) return { done: false, ...res };
     if (res.status === 200) {
       let results = [];

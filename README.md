@@ -14,6 +14,7 @@ Claude Code asks for your Tessana API key during install (request one from hello
 ## Security and privacy
 
 - Your API key is entered when you install the plugin and kept in Claude Code's secure storage. It is only passed to the plugin's local MCP server, never written to the repo, and never shown to Claude.
+- In Claude Code cloud sessions, `/tessana:setup` asks for the key in a secure form instead. It is stored as a network secret on that cloud environment (shared by anyone using the same environment), and the proxy adds it to requests to app.tessanaai.com.
 - The plugin sends IDs, and the test titles, objectives/steps, URLs and tags you approve, only to the Tessana API. Results can include links to screenshots and recordings. No source code is uploaded.
 - Creating tests or suites and starting a test run always ask for your approval, and runs are capped per session.
 

@@ -14,6 +14,7 @@ const GOOD_KEY = 'good-key';
 let api;
 let baseUrl;
 let batchPolls = 0;
+let lastAuth;
 
 before(async () => {
   api = http.createServer((req, res) => {
@@ -24,6 +25,7 @@ before(async () => {
         res.writeHead(status, { 'content-type': 'application/json' });
         res.end(JSON.stringify(body));
       };
+      lastAuth = req.headers.authorization;
       if (req.headers.authorization !== `Bearer ${GOOD_KEY}`) return send(401, { error: 'Authentication failed' });
       const body = raw ? JSON.parse(raw) : {};
       if (req.url === '/run_test_suites') {
@@ -197,13 +199,15 @@ test('check_connection reports valid, rejected and missing keys', async () => {
   const ok = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [call(1, 'check_connection')]);
   assert.match(text(ok[1]), /API key is valid/);
   const bad = await mcp({ TESSANA_API_KEY: 'wrong' }, [call(1, 'check_connection')]);
-  assert.match(text(bad[1]), /rejected/);
+  assert.equal(text(bad[1]), `API key was rejected by ${baseUrl}.`);
   assert.equal(bad[1].result.isError, true);
+  const other = await mcp({ TESSANA_API_KEY: 'wrong' }, [call(1, 'list_projects')]);
+  assert.doesNotMatch(text(other[1]), /cloud session/);
 });
 
 test('missing key gives setup instructions', { skip: process.platform === 'darwin' && 'reads the real macOS keychain' }, async () => {
   const r = await mcp({}, [call(1, 'check_connection')]);
-  assert.match(text(r[1]), /Run \/tessana:setup/);
+  assert.match(text(r[1]), /^No Tessana API key found\. .*run \/plugin.*Run \/tessana:setup/);
 });
 
 test('run cap holds under concurrent calls and refunds failed runs', async () => {
@@ -265,4 +269,69 @@ test('API key comes from the sensitive api_key plugin option', () => {
 test('MCP server reports the plugin version', async () => {
   const r = await mcp({}, [{ id: 1, method: 'initialize', params: {} }]);
   assert.equal(r[1].result.serverInfo.version, readJson('.claude-plugin/plugin.json').version);
+});
+
+// Imports lib.mjs in a fresh process with the given env and runs a snippet that prints JSON.
+function inLib(extraEnv, snippet) {
+  return new Promise((resolve, reject) => {
+    const code = `import * as lib from ${JSON.stringify(SERVER_DIR + 'lib.mjs')}; console.log(JSON.stringify(${snippet}));`;
+    const proc = spawn('node', ['--input-type=module', '-e', code], { env: env(extraEnv) });
+    let out = '';
+    proc.stdout.on('data', (d) => (out += d));
+    proc.stderr.on('data', (d) => (out += d));
+    proc.on('exit', (c) => (c === 0 ? resolve(JSON.parse(out)) : reject(new Error(out))));
+  });
+}
+
+const noKeychain = { skip: process.platform === 'darwin' && 'reads the real macOS keychain' };
+
+test('getApiKey returns empty locally with no key', noKeychain, async () => {
+  assert.equal(await inLib({}, 'lib.getApiKey()'), '');
+  assert.equal(await inLib({ CLAUDE_CODE_REMOTE: 'false' }, 'lib.getApiKey()'), '');
+});
+
+test('getApiKey returns the proxy placeholder in a cloud session with no key', noKeychain, async () => {
+  assert.equal(await inLib({ CLAUDE_CODE_REMOTE: 'true' }, 'lib.getApiKey()'), 'proxy-injected');
+  assert.equal(await inLib({ CLAUDE_CODE_REMOTE: 'true', TESSANA_API_KEY: '${user_config.api_key}' }, 'lib.getApiKey()'), 'proxy-injected');
+});
+
+test('a real key always wins over the placeholder, even after the placeholder was used', noKeychain, async () => {
+  assert.equal(await inLib({ CLAUDE_CODE_REMOTE: 'true', TESSANA_API_KEY: 'real' }, 'lib.getApiKey()'), 'real');
+  const seq = await inLib(
+    { CLAUDE_CODE_REMOTE: 'true' },
+    '[lib.getApiKey(), (process.env.TESSANA_API_KEY = "real", lib.getApiKey())]',
+  );
+  assert.deepEqual(seq, ['proxy-injected', 'real']);
+});
+
+test('error wording: cloud says run /tessana:setup and never /plugin; local is unchanged', async () => {
+  const cloud = await inLib({ CLAUDE_CODE_REMOTE: 'true' }, '[lib.MISSING_KEY_MESSAGE, lib.REJECTED_KEY_MESSAGE]');
+  for (const m of cloud) {
+    assert.equal(m, 'No valid Tessana API key for this cloud session. Run /tessana:setup to add one.');
+    assert.doesNotMatch(m, /\/plugin|restart/i);
+  }
+  const local = await inLib({}, '[lib.MISSING_KEY_MESSAGE, lib.REJECTED_KEY_MESSAGE]');
+  assert.match(local[0], /^No Tessana API key found\. .*run \/plugin/);
+  assert.equal(local[1], `API key was rejected by ${baseUrl}.`);
+});
+
+test('cloud session with no key sends the placeholder and explains a 401', noKeychain, async () => {
+  const cloud = { CLAUDE_CODE_REMOTE: 'true' };
+  const r = await mcp(cloud, [call(1, 'check_connection')]);
+  assert.equal(lastAuth, 'Bearer proxy-injected');
+  assert.equal(text(r[1]), 'No valid Tessana API key for this cloud session. Run /tessana:setup to add one.');
+  const other = await mcp(cloud, [call(1, 'list_projects'), call(2, 'wait_for_batch', { run_batch_id: 99 })]);
+  for (const m of responses(other)) {
+    assert.equal(m.result.isError, true);
+    assert.match(text(m), /HTTP 401[\s\S]*No valid Tessana API key for this cloud session/);
+  }
+});
+
+test('a real key works in a cloud session', noKeychain, async () => {
+  const r = await mcp({ CLAUDE_CODE_REMOTE: 'true', TESSANA_API_KEY: GOOD_KEY }, [call(1, 'check_connection')]);
+  assert.match(text(r[1]), /API key is valid/);
+});
+
+test('.mcp.json routes Node requests through the session proxy', () => {
+  assert.equal(readJson('.mcp.json').mcpServers.tessana.env.NODE_USE_ENV_PROXY, '1');
 });

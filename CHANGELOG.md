@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Works in Claude Code cloud sessions. With no key set there, the server sends a placeholder that the session's proxy replaces with the key saved for app.tessanaai.com. `.mcp.json` sets `NODE_USE_ENV_PROXY=1` so Node sends requests through the proxy.
+- `/tessana:setup` in a cloud session opens a secure form to save the key as a network secret, instead of pointing to `/plugin`.
+- In cloud sessions, a rejected or missing key says to run `/tessana:setup`. Messages on your own computer are unchanged.
+
 ## 0.5.1
 
 - The API key is now asked for when the plugin is installed (a sensitive `api_key` plugin option kept in Claude Code's secure storage) instead of being read from `TESSANA_API_KEY` in your shell. The OS keychain is still read as a fallback for existing installs.

@@ -39,7 +39,7 @@ before(async () => {
         });
       }
       if (req.url === '/get_test_results') return send(200, { results: [], echo: { method: req.method, body } });
-      if (['/get_projects', '/get_tests', '/create_test', '/create_test_suite'].includes(req.url))
+      if (['/get_projects', '/get_tests', '/create_test', '/create_test_suite', '/get_test_details', '/get_test_run_history', '/get_test_gen_history'].includes(req.url))
         return send(req.method === 'POST' ? 201 : 200, { ok: true, echo: { method: req.method, body } });
       send(404, {});
     });
@@ -100,6 +100,9 @@ test('initialize and list tools', async () => {
       'list_tests',
       'create_test',
       'create_test_suite',
+      'get_test_details',
+      'get_test_run_history',
+      'get_test_gen_history',
     ],
   );
 });
@@ -155,6 +158,21 @@ test('authoring tools reject invalid input without calling the API', async () =>
   assert.equal(text(r[4]), 'test_ids must be a non-empty array of integers');
   assert.match(text(r[5]), /platform must be one of desktop/);
   assert.equal(text(r[6]), 'steps must be an array of non-empty strings');
+});
+
+test('read tools send the right query', async () => {
+  const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
+    call(1, 'get_test_details', { ui_test_id: 2826 }),
+    call(2, 'get_test_run_history', { ui_test_id: 2826, limit: 5 }),
+    call(3, 'get_test_gen_history', { ui_test_id: 2826, include_actions: true, platform: 'desktop' }),
+    call(4, 'get_test_gen_history', { ui_test_id: 2826, include_actions: 'yes' }),
+    call(5, 'get_test_details', {}),
+  ]);
+  assert.match(text(r[1]), /"method":"GET","body":\{"ui_test_id":2826\}/);
+  assert.match(text(r[2]), /"body":\{"ui_test_id":2826,"limit":5\}/);
+  assert.match(text(r[3]), /"body":\{"ui_test_id":2826,"platform":"desktop","include_actions":true\}/);
+  assert.equal(text(r[4]), 'include_actions must be a boolean');
+  assert.equal(text(r[5]), 'ui_test_id is required');
 });
 
 test('check_connection reports valid, rejected and missing keys', async () => {

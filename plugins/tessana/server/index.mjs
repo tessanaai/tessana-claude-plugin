@@ -159,6 +159,62 @@ const TOOLS = [
       required: ['project_id', 'name', 'test_ids'],
     },
   },
+  {
+    name: 'get_test_details',
+    method: 'GET',
+    path: '/get_test_details',
+    description:
+      'Get everything that defines one Tessana test: title, objective (or steps when is_prescribe is true), url, ' +
+      'app_mode, run_mode, logged_in/store_session, tags, success_groups with their criteria, platforms_available ' +
+      '(platforms with successfully generated actions), default_action_group_id, login_email and has_login_password. ' +
+      'The stored password is never returned. Use it to inspect a test or base a new test on an existing one.',
+    inputSchema: {
+      type: 'object',
+      properties: { ui_test_id: { type: 'integer', description: 'Test ID from list_tests.' } },
+      required: ['ui_test_id'],
+    },
+  },
+  {
+    name: 'get_test_run_history',
+    method: 'GET',
+    path: '/get_test_run_history',
+    description:
+      'List past executions of one test, newest first. Each result has test_run_id, run_batch_id, ui_test_suite_id, ' +
+      'platform, test_status (Success|Failed|Canceled|Terminated, or Running|Pending|Paused), run_status, retry_num, ' +
+      'start/end times, duration_in_s and the content_variables used. Pass a test_run_id to get_test_results for ' +
+      'screenshots and recordings.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ui_test_id: { type: 'integer', description: 'Test ID from list_tests.' },
+        limit: { type: 'integer', description: 'Max results (default 50, max 200).' },
+      },
+      required: ['ui_test_id'],
+    },
+  },
+  {
+    name: 'get_test_gen_history',
+    method: 'GET',
+    path: '/get_test_gen_history',
+    description:
+      'List the test-generation attempts (action groups) for one test, newest first: status (Success|Failed|...), ' +
+      'platform, created_at, is_default and the generation run status and times. With include_actions, each attempt ' +
+      'also lists its generated steps in order (action, description, element_identifier).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ui_test_id: { type: 'integer', description: 'Test ID from list_tests.' },
+        platform: {
+          type: 'string',
+          enum: ['desktop', 'mobile_web', 'android_app', 'ios_app'],
+          description: 'Only attempts for this platform.',
+        },
+        include_actions: { type: 'boolean', description: 'Include the generated steps of each attempt.' },
+        limit: { type: 'integer', description: 'Max results (default 50, max 200).' },
+      },
+      required: ['ui_test_id'],
+    },
+  },
 ];
 
 // POST {} passes auth then fails on missing ids, so 400 means the key works and nothing was queued.
@@ -177,6 +233,8 @@ function checkValue(key, schema, v) {
   switch (schema.type) {
     case 'integer':
       return Number.isInteger(v) ? null : `${key} must be an integer`;
+    case 'boolean':
+      return typeof v === 'boolean' ? null : `${key} must be a boolean`;
     case 'string':
       if (typeof v !== 'string' || !v.trim()) return `${key} must be a non-empty string`;
       return schema.enum && !schema.enum.includes(v) ? `${key} must be one of ${schema.enum.join(', ')}` : null;
@@ -254,7 +312,7 @@ async function handle(msg) {
         result: {
           protocolVersion: params?.protocolVersion || '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'tessana', version: '0.3.0' },
+          serverInfo: { name: 'tessana', version: '0.4.0' },
         },
       });
     case 'ping':

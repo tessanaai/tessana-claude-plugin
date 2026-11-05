@@ -1,7 +1,7 @@
 {
   "name": "tessana",
-  "version": "0.3.0",
-  "description": "Create Tessana tests and test suites, run them, and fetch batch and per-test results from Claude Code.",
+  "version": "0.4.0",
+  "description": "Create, inspect and run Tessana tests and test suites, and fetch results and history from Claude Code.",
   "author": { "name": "Tessana AI", "email": "hello@tessanaai.com" },
   "homepage": "https://funky-summer-98a.notion.site/Tessana-API-Reference-Documents-7f5731d4a58044dc94fdba752d70b064",
   "repository": "https://github.com/tessanaai/tessana-claude-plugin",

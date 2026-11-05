@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Skills: `create-test`, `create-test-suite`.
+- MCP tools: `list_projects`, `list_tests`, `create_test`, `create_test_suite` (backed by the new `/get_projects`, `/get_tests`, `/create_test` and `/create_test_suite` API endpoints).
+- `create_test_suite` returns a `test_suite_config_id` that can be passed straight to `run_test_suites`.
+
 ## 0.2.0
 
 - Skills: `setup`, `run`, `batch-results`, `test-results`.

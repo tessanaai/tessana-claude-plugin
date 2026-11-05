@@ -15,7 +15,7 @@ Create Tessana tests. Arguments: `$ARGUMENTS`
    - Either `objective` or `steps`, never both:
      - `objective` (default): the goal in plain language plus how to tell it succeeded, e.g. "Add any in-stock item to the cart and complete checkout with the saved Visa card. Success: the order confirmation page shows an order number." The Tessana agent works out the clicks.
      - `steps`: only when the user gave an exact sequence or the order matters. One action per step, e.g. `["Click 'Sign in'", "Enter [[login_email]] in Email", ...]`.
-   - `url`: the start page, from `--url`, the request, or the app's config. Ask if a web test has no start URL.
+   - `url`: the start page, from `--url`, the request, or the app's config. Ask if a web test has no start URL. Passing a URL makes the test start there (`app_mode: custom_url`). To start from the project's configured app instead, omit `url`; when copying an existing test, keep its `app_mode`.
    - `tags`: only if the user asked for them.
    Never put real passwords, tokens or other secrets in a test. Use content variables instead (`[[variable_name]]`), and tell the user to define them in the Tessana project.
 4. **Avoid duplicates.** Call `list_tests` with `search` set to a key word from each title. If a close match exists, show it and ask whether to still create the new one.

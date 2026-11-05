@@ -116,9 +116,51 @@ const TOOLS = [
           description: 'Ordered step-by-step instructions. Omit when passing objective.',
         },
         url: { type: 'string', description: 'Start URL for web tests.' },
+        app_mode: {
+          type: 'string',
+          enum: ['custom_url', 'auto', 'app_url_path', 'mobile_home', 'mobile_settings'],
+          description:
+            'Where the test starts. custom_url opens url (the default when url is given); auto opens the ' +
+            "project's configured app (the default without url); app_url_path appends url to the project's app url; " +
+            'mobile_home/mobile_settings start on the device home or settings screen.',
+        },
         tags: { type: 'array', items: { type: 'string' }, description: 'Tag names; missing tags are created.' },
       },
       required: ['project_id', 'title'],
+    },
+  },
+  {
+    name: 'update_test',
+    method: 'POST',
+    path: '/update_test',
+    description:
+      'Change an existing Tessana test. Only the fields passed are changed. Pass objective or steps (not both) to ' +
+      'replace the instructions; tags replaces the whole tag set. Returns {"ui_test_id", "updated": [field names]}. ' +
+      'Changing the objective or steps does not regenerate existing actions; the next generation uses the new text.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ui_test_id: { type: 'integer', description: 'Test to change.' },
+        title: { type: 'string', description: 'New title.' },
+        objective: { type: 'string', description: 'New objective. Omit when passing steps.' },
+        steps: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          description: 'New ordered steps. Omit when passing objective.',
+        },
+        url: { type: 'string', description: 'New start URL.' },
+        app_mode: {
+          type: 'string',
+          enum: ['custom_url', 'auto', 'app_url_path', 'mobile_home', 'mobile_settings'],
+          description:
+            'Where the test starts. custom_url opens url (the default when url is given); auto opens the ' +
+            "project's configured app (the default without url); app_url_path appends url to the project's app url; " +
+            'mobile_home/mobile_settings start on the device home or settings screen.',
+        },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Full new tag set (replaces existing tags).' },
+      },
+      required: ['ui_test_id'],
     },
   },
   {
@@ -263,6 +305,11 @@ function validate(tool, args) {
   }
   if (tool.name === 'create_test' && (args.objective == null) === (args.steps == null))
     return 'pass exactly one of objective or steps';
+  if (tool.name === 'update_test') {
+    if (args.objective != null && args.steps != null) return 'pass either objective or steps, not both';
+    if (!Object.keys(tool.inputSchema.properties).some((k) => k !== 'ui_test_id' && args[k] != null))
+      return 'nothing to update: pass at least one field to change';
+  }
   return null;
 }
 
@@ -312,7 +359,7 @@ async function handle(msg) {
         result: {
           protocolVersion: params?.protocolVersion || '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'tessana', version: '0.4.0' },
+          serverInfo: { name: 'tessana', version: '0.5.0' },
         },
       });
     case 'ping':

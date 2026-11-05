@@ -39,7 +39,7 @@ before(async () => {
         });
       }
       if (req.url === '/get_test_results') return send(200, { results: [], echo: { method: req.method, body } });
-      if (['/get_projects', '/get_tests', '/create_test', '/create_test_suite', '/get_test_details', '/get_test_run_history', '/get_test_gen_history'].includes(req.url))
+      if (['/get_projects', '/get_tests', '/create_test', '/create_test_suite', '/get_test_details', '/get_test_run_history', '/get_test_gen_history', '/update_test'].includes(req.url))
         return send(req.method === 'POST' ? 201 : 200, { ok: true, echo: { method: req.method, body } });
       send(404, {});
     });
@@ -99,6 +99,7 @@ test('initialize and list tools', async () => {
       'list_projects',
       'list_tests',
       'create_test',
+      'update_test',
       'create_test_suite',
       'get_test_details',
       'get_test_run_history',
@@ -173,6 +174,21 @@ test('read tools send the right query', async () => {
   assert.match(text(r[3]), /"body":\{"ui_test_id":2826,"platform":"desktop","include_actions":true\}/);
   assert.equal(text(r[4]), 'include_actions must be a boolean');
   assert.equal(text(r[5]), 'ui_test_id is required');
+});
+
+test('update_test sends only changed fields and rejects empty or conflicting updates', async () => {
+  const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
+    call(1, 'update_test', { ui_test_id: 2828, app_mode: 'custom_url' }),
+    call(2, 'update_test', { ui_test_id: 2828 }),
+    call(3, 'update_test', { ui_test_id: 2828, objective: 'o', steps: ['s'] }),
+    call(4, 'update_test', { ui_test_id: 2828, app_mode: 'sideways' }),
+    call(5, 'create_test', { project_id: 3, title: 'x', objective: 'o', url: 'https://a.example', app_mode: 'auto' }),
+  ]);
+  assert.match(text(r[1]), /"method":"POST","body":\{"ui_test_id":2828,"app_mode":"custom_url"\}/);
+  assert.equal(text(r[2]), 'nothing to update: pass at least one field to change');
+  assert.equal(text(r[3]), 'pass either objective or steps, not both');
+  assert.match(text(r[4]), /app_mode must be one of custom_url/);
+  assert.match(text(r[5]), /"app_mode":"auto"/);
 });
 
 test('check_connection reports valid, rejected and missing keys', async () => {

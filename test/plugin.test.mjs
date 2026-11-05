@@ -39,6 +39,8 @@ before(async () => {
         });
       }
       if (req.url === '/get_test_results') return send(200, { results: [], echo: { method: req.method, body } });
+      if (['/get_projects', '/get_tests', '/create_test', '/create_test_suite'].includes(req.url))
+        return send(req.method === 'POST' ? 201 : 200, { ok: true, echo: { method: req.method, body } });
       send(404, {});
     });
   });
@@ -89,7 +91,16 @@ test('initialize and list tools', async () => {
   assert.equal(r[1].result.serverInfo.name, 'tessana');
   assert.deepEqual(
     r[2].result.tools.map((t) => t.name),
-    ['check_connection', 'run_test_suites', 'get_batch_run_results', 'get_test_results'],
+    [
+      'check_connection',
+      'run_test_suites',
+      'get_batch_run_results',
+      'get_test_results',
+      'list_projects',
+      'list_tests',
+      'create_test',
+      'create_test_suite',
+    ],
   );
 });
 
@@ -110,6 +121,40 @@ test('rejects invalid input without calling the API', async () => {
   ]);
   assert.equal(text(r[1]), 'testrun_id must be an integer');
   assert.equal(text(r[2]), 'ids must be a non-empty array of integers');
+});
+
+test('authoring tools send only the fields given', async () => {
+  const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
+    call(1, 'list_projects'),
+    call(2, 'list_tests', { project_id: 3 }),
+    call(3, 'create_test', { project_id: 3, title: 'Login', objective: 'Log in', tags: ['smoke'] }),
+    call(4, 'create_test', { project_id: 3, title: 'Buy', steps: ['Open shop', 'Click Buy'] }),
+    call(5, 'create_test_suite', { project_id: 3, name: 'Smoke', test_ids: [5, 4], platform: 'mobile_web' }),
+  ]);
+  for (const m of Object.values(r)) assert.equal(m.result.isError, false, text(m));
+  assert.match(text(r[1]), /"method":"GET","body":\{\}/);
+  assert.match(text(r[2]), /"method":"GET","body":\{"project_id":3\}/);
+  assert.match(text(r[3]), /HTTP 201/);
+  assert.match(text(r[3]), /"body":\{"project_id":3,"title":"Login","objective":"Log in","tags":\["smoke"\]\}/);
+  assert.match(text(r[4]), /"steps":\["Open shop","Click Buy"\]/);
+  assert.match(text(r[5]), /"method":"POST","body":\{"project_id":3,"name":"Smoke","test_ids":\[5,4\],"platform":"mobile_web"\}/);
+});
+
+test('authoring tools reject invalid input without calling the API', async () => {
+  const r = await mcp({ TESSANA_API_KEY: GOOD_KEY }, [
+    call(1, 'create_test', { project_id: 3, title: 'x' }),
+    call(2, 'create_test', { project_id: 3, title: 'x', objective: 'o', steps: ['s'] }),
+    call(3, 'create_test', { title: 'x', objective: 'o' }),
+    call(4, 'create_test_suite', { project_id: 3, name: 'S', test_ids: [] }),
+    call(5, 'create_test_suite', { project_id: 3, name: 'S', test_ids: [1], platform: 'tv' }),
+    call(6, 'create_test', { project_id: 3, title: 'x', steps: ['ok', ''] }),
+  ]);
+  assert.equal(text(r[1]), 'pass exactly one of objective or steps');
+  assert.equal(text(r[2]), 'pass exactly one of objective or steps');
+  assert.equal(text(r[3]), 'project_id is required');
+  assert.equal(text(r[4]), 'test_ids must be a non-empty array of integers');
+  assert.match(text(r[5]), /platform must be one of desktop/);
+  assert.equal(text(r[6]), 'steps must be an array of non-empty strings');
 });
 
 test('check_connection reports valid, rejected and missing keys', async () => {

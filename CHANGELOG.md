@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Skill: `edit-test`.
+- MCP tool: `update_test` (backed by the new `/update_test` endpoint): change a test's title, objective or steps, url, start mode and tags.
+- `create_test` takes `app_mode`. The API now defaults it to `custom_url` when a url is given, so tests start at their own url (previously `auto`, which ignores the url).
+
 ## 0.4.0
 
 - Skill: `test-info` (a test's definition, run history and generation history).

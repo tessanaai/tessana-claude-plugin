@@ -12,13 +12,14 @@ Exposes the [Tessana API](https://funky-summer-98a.notion.site/Tessana-API-Refer
 | `get_test_results` | `GET /get_test_results` | `testrun_id: int` |
 | `list_projects` | `GET /get_projects` | none |
 | `list_tests` | `GET /get_tests` | `project_id: int`, `search?: string` |
-| `create_test` | `POST /create_test` | `project_id: int`, `title: string`, `objective: string` or `steps: string[]`, `url?`, `tags?: string[]` |
+| `create_test` | `POST /create_test` | `project_id: int`, `title: string`, `objective: string` or `steps: string[]`, `url?`, `app_mode?`, `tags?: string[]` |
+| `update_test` | `POST /update_test` | `ui_test_id: int` and any of `title`, `objective` or `steps`, `url`, `app_mode`, `tags` (replaces all) |
 | `get_test_details` | `GET /get_test_details` | `ui_test_id: int` |
 | `get_test_run_history` | `GET /get_test_run_history` | `ui_test_id: int`, `limit?: int` |
 | `get_test_gen_history` | `GET /get_test_gen_history` | `ui_test_id: int`, `platform?`, `include_actions?: bool`, `limit?: int` |
 | `create_test_suite` | `POST /create_test_suite` | `project_id: int`, `name: string`, `test_ids: int[]`, `platform?`, `behavior_after_test?`, `description?`, `environment?`, `tags?: string[]` |
 
-`run_test_suites`, `create_test` and `create_test_suite` always ask for approval. `create_test_suite` returns a `test_suite_config_id`, which is the ID `run_test_suites` takes. `run_test_suites` and is capped at 10 batches per session (`TESSANA_MAX_RUNS_PER_SESSION`).
+`run_test_suites`, `create_test`, `update_test` and `create_test_suite` always ask for approval. `create_test_suite` returns a `test_suite_config_id`, which is the ID `run_test_suites` takes. `run_test_suites` and is capped at 10 batches per session (`TESSANA_MAX_RUNS_PER_SESSION`).
 
 ## Skills
 
@@ -30,6 +31,7 @@ Claude uses these automatically when a request matches (e.g. "run Tessana suite 
 - `/tessana:test-results <testrun_id>`: per-test results with screenshot/video URLs
 - `/tessana:test-info <ui_test_id or title> [--runs] [--gen] [--actions]`: a test's definition, run history and generation history
 - `/tessana:create-test <what to test> [--project <id>] [--url <url>]`: draft tests from a description or the code in context, confirm, then create them
+- `/tessana:edit-test <ui_test_id or title> <what to change>`: change a test's title, instructions, start URL/mode or tags
 - `/tessana:create-test-suite <name> [test_id ...] [--platform <p>] [--run]`: group tests into a runnable suite
 
 ## Setup

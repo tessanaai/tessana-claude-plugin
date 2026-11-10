@@ -1,6 +1,6 @@
 {
   "name": "tessana",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Create, edit, inspect and run Tessana tests and test suites, and fetch results and history from Claude Code.",
   "author": { "name": "Tessana AI", "email": "hello@tessanaai.com" },
   "homepage": "https://tessanaai.com",

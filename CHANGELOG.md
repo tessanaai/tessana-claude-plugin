@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+- `/tessana:setup` in a cloud session now tells you to keep **Bearer token** selected in the secure form, since Tessana does not accept a username and password. If the key is still rejected after saving, it opens the form again so you can save it as a bearer token.
+- README: the same note in the cloud sessions section.
+
 ## 0.6.0
 
 - Works in Claude Code cloud sessions. With no key set there, the server sends a placeholder that the session's proxy replaces with the key saved for app.tessanaai.com. `.mcp.json` sets `NODE_USE_ENV_PROXY=1` so Node sends requests through the proxy.

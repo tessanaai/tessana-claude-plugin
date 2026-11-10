@@ -402,7 +402,7 @@ async function handle(msg) {
         result: {
           protocolVersion: params?.protocolVersion || '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'tessana', version: '0.6.0' },
+          serverInfo: { name: 'tessana', version: '0.6.1' },
         },
       });
     case 'ping':

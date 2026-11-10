@@ -50,7 +50,7 @@ Claude Code asks for your Tessana API key when you install the plugin and keeps 
 
 ## Using Tessana in Claude Code cloud sessions
 
-In cloud sessions (claude.ai/code, the mobile app, and cloud mode in the desktop app) there is no `/plugin` menu. Run `/tessana:setup` instead. It opens a secure form where you enter your Tessana API key. The key is not shown to Claude. It is stored as a network secret on that cloud environment, and the environment's proxy adds it to requests sent to app.tessanaai.com. If the environment is shared with your organization, everyone who uses that environment will use the same key.
+In cloud sessions (claude.ai/code, the mobile app, and cloud mode in the desktop app) there is no `/plugin` menu. Run `/tessana:setup` instead. It opens a secure form where you enter your Tessana API key. Keep **Bearer token** selected and paste the key into **Token**. Tessana does not accept a username and password, so that option won't work. The key is not shown to Claude. It is stored as a network secret on that cloud environment, and the environment's proxy adds it to requests sent to app.tessanaai.com. If the environment is shared with your organization, everyone who uses that environment will use the same key.
 
 ## Data and privacy
 

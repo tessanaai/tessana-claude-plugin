@@ -4,8 +4,9 @@
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/server/index.mjs"],
       "env": {
-        "TESSANA_API_KEY": "${TESSANA_API_KEY:-}",
-        "TESSANA_BASE_URL": "${TESSANA_BASE_URL:-https://app.tessanaai.com}"
+        "TESSANA_API_KEY": "${user_config.api_key}",
+        "TESSANA_BASE_URL": "${TESSANA_BASE_URL:-https://app.tessanaai.com}",
+        "NODE_USE_ENV_PROXY": "1"
       }
     }
   }

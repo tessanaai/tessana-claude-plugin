@@ -9,13 +9,16 @@ Create and run [Tessana](https://tessanaai.com) end-to-end tests and test suites
 /plugin install tessana@tessana
 ```
 
-Then run `/tessana:setup` to connect your Tessana API key. See [plugins/tessana/README.md](plugins/tessana/README.md) for the full list of skills and tools.
+Claude Code asks for your Tessana API key during install (request one from hello@tessanaai.com). Run `/tessana:setup` to check the connection. See [plugins/tessana/README.md](plugins/tessana/README.md) for the full list of skills and tools.
 
 ## Security and privacy
 
-- Your API key is read from the `TESSANA_API_KEY` environment variable or your OS keychain. It is never written to the repo or sent to Claude.
-- The plugin sends suite and run IDs, and the test titles, objectives/steps and URLs you approve, to the Tessana API. No source code is uploaded.
+- Your API key is entered when you install the plugin and kept in Claude Code's secure storage. It is only passed to the plugin's local MCP server, never written to the repo, and never shown to Claude.
+- In Claude Code cloud sessions, `/tessana:setup` asks for the key in a secure form instead. It is stored as a network secret on that cloud environment (shared by anyone using the same environment), and the proxy adds it to requests to app.tessanaai.com.
+- The plugin sends IDs, and the test titles, objectives/steps, URLs and tags you approve, only to the Tessana API. Results can include links to screenshots and recordings. No source code is uploaded.
 - Creating tests or suites and starting a test run always ask for your approval, and runs are capped per session.
+
+See [Data and privacy](plugins/tessana/README.md#data-and-privacy) for the full details.
 
 ## Development
 

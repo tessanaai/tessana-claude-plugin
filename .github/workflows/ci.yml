@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Unit tests (mock Tessana API)
+      - name: Manifest and skill checks
         run: node --test
       - name: Validate marketplace and plugin manifests
         run: |

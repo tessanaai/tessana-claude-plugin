@@ -1,18 +1,12 @@
 {
   "name": "tessana",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Create, edit, inspect and run Tessana tests and test suites, and fetch results and history from Claude Code.",
   "author": { "name": "Tessana AI", "email": "hello@tessanaai.com" },
   "homepage": "https://tessanaai.com",
   "repository": "https://github.com/tessanaai/tessana-claude-plugin",
   "license": "Apache-2.0",
   "keywords": ["testing", "qa", "tessana"],
-  "userConfig": {
-    "api_key": {
-      "type": "string",
-      "title": "Tessana API key",
-      "description": "Your Tessana API key (get one from hello@tessanaai.com)",
-      "sensitive": true
-    }
-  }
+  "privacyPolicyUrl": "https://tessanaai.com/TODO-privacy-policy",
+  "supportUrl": "https://tessanaai.com/TODO-support"
 }

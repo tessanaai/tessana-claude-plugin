@@ -17,8 +17,9 @@ Then connect your Tessana account: run `/mcp`, select the Tessana server (`plugi
 - Access comes from your Tessana sign-in. There is no API key to store, and the server can only see and change what your Tessana account can.
 - The plugin sends IDs, and the test titles, objectives/steps, URLs and tags you approve. Results can include links to screenshots and recordings. No source code is uploaded.
 - Tessana keeps your tests and run history until you delete them.
+- Starting a run, and creating or changing tests or suites, asks for your approval unless you have allowed those tools. The hosted server allows each user up to 10 test runs per hour.
 
-See [Data and privacy](plugins/tessana/README.md#data-and-privacy) for the full details.
+See [Data and privacy](plugins/tessana/README.md#data-and-privacy) for the full details, and Tessana's [privacy policy](https://app.tessanaai.com/privacy-policy). For help, go to [Tessana support](https://app.tessanaai.com/support).
 
 ## Development
 

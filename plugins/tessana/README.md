@@ -20,7 +20,7 @@ Create, edit, inspect and run [Tessana](https://tessanaai.com) end-to-end tests 
 | `get_test_gen_history` | A test's generation attempts | `ui_test_id: int`, `platform?`, `include_actions?: bool`, `limit?: int` |
 | `create_test_suite` | Groups tests into a runnable suite | `project_id: int`, `name: string`, `test_ids: int[]`, `platform?`, `behavior_after_test?`, `description?`, `environment?`, `tags?: string[]` |
 
-`create_test_suite` returns a `test_suite_config_id`, which is the ID `run_test_suites` takes.
+`create_test_suite` returns a `test_suite_config_id`, which is the ID `run_test_suites` takes. The hosted server allows each user up to 10 test runs per hour.
 
 ## Skills
 
@@ -50,7 +50,7 @@ Then connect your Tessana account:
 2. Select the Tessana server (`plugin:tessana:tessana`) and choose **Authenticate**.
 3. Sign in in the browser window that opens, with the same account you use at app.tessanaai.com, and allow access.
 
-Run `/tessana:setup` to check the connection, or if you need to sign in again later. If you don't have a Tessana account, contact hello@tessanaai.com.
+Run `/tessana:setup` to check the connection, or if you need to sign in again later. If you don't have a Tessana account, contact hello@tessanaai.com. For help, go to [Tessana support](https://app.tessanaai.com/support).
 
 ## Cloud sessions and claude.ai
 
@@ -63,4 +63,6 @@ Cloud sessions (claude.ai/code, the mobile app, and cloud mode in the desktop ap
 - **Nothing runs on your computer.** The plugin is a set of skills and a pointer to the hosted server. It installs no local server, scripts or hooks, and writes no files.
 - **What comes back.** Results can include links to screenshots, audio and video recordings of test runs. These are hosted by Tessana. Claude gets the links; the plugin does not download them.
 - **Retention.** Tessana keeps your tests, suites and run history (including screenshots and recordings) until you delete them.
-- **Approvals.** Claude Code asks for your approval before starting a run or creating or changing tests or suites, unless you have allowed those tools.
+- **Approvals and limits.** Claude Code asks for your approval before starting a run or creating or changing tests or suites, unless you have allowed those tools. The hosted server allows each user up to 10 test runs per hour.
+
+See Tessana's [privacy policy](https://app.tessanaai.com/privacy-policy). For help, go to [Tessana support](https://app.tessanaai.com/support) or email hello@tessanaai.com.

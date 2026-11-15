@@ -6,7 +6,8 @@
 - Removed the local server (`server/`), the `api_key` plugin option, the keychain fallback, `TESSANA_BASE_URL`, `TESSANA_MAX_RUNS_PER_SESSION` and `NODE_USE_ENV_PROXY`. Nothing in the plugin runs on your computer any more, and Node is no longer needed.
 - `/tessana:setup` now walks you through signing in, then checks the connection. In cloud sessions and on claude.ai, it tells you to add Tessana as a connector instead of saving an API key.
 - `wait_for_batch` now returns after at most 90 seconds if the batch isn't done. `/tessana:run` keeps calling it until the batch finishes or 30 minutes pass.
-- `plugin.json`: added `privacyPolicyUrl` and `supportUrl`.
+- The per-session run cap is replaced by the hosted server's limit of 10 test runs per hour for each user.
+- `plugin.json`: added `privacyPolicyUrl` (https://app.tessanaai.com/privacy-policy) and `supportUrl` (https://app.tessanaai.com/support). The READMEs link to both.
 - README: sign-in instead of API-key setup, and a rewritten "Data and privacy" section for the hosted server.
 
 ## 0.6.1

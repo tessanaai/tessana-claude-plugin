@@ -7,6 +7,6 @@
   "repository": "https://github.com/tessanaai/tessana-claude-plugin",
   "license": "Apache-2.0",
   "keywords": ["testing", "qa", "tessana"],
-  "privacyPolicyUrl": "https://tessanaai.com/TODO-privacy-policy",
-  "supportUrl": "https://tessanaai.com/TODO-support"
+  "privacyPolicyUrl": "https://app.tessanaai.com/privacy-policy",
+  "supportUrl": "https://app.tessanaai.com/support"
 }

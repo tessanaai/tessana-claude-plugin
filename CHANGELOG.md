@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+
+- The plugin now uses Tessana's hosted MCP server at `https://mcp.tessanaai.com/mcp` instead of a local Node server. You sign in with your Tessana account (in Claude Code, through `/mcp`) instead of entering an API key. The tool names are unchanged.
+- Removed the local server (`server/`), the `api_key` plugin option, the keychain fallback, `TESSANA_BASE_URL`, `TESSANA_MAX_RUNS_PER_SESSION` and `NODE_USE_ENV_PROXY`. Nothing in the plugin runs on your computer any more, and Node is no longer needed.
+- `/tessana:setup` now walks you through signing in, then checks the connection. In cloud sessions and on claude.ai, it tells you to add Tessana as a connector instead of saving an API key.
+- `wait_for_batch` now returns after at most 90 seconds if the batch isn't done. `/tessana:run` keeps calling it until the batch finishes or 30 minutes pass.
+- The per-session run cap is replaced by the hosted server's limit of 10 test runs per hour for each user.
+- `plugin.json`: added `privacyPolicyUrl` (https://app.tessanaai.com/privacy-policy) and `supportUrl` (https://app.tessanaai.com/support). The READMEs link to both.
+- README: sign-in instead of API-key setup, and a rewritten "Data and privacy" section for the hosted server.
+
 ## 0.6.1
 
 - `/tessana:setup` in a cloud session now tells you to keep **Bearer token** selected in the secure form, since Tessana does not accept a username and password. If the key is still rejected after saving, it opens the form again so you can save it as a bearer token.
